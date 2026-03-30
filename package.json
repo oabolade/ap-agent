@@ -6,21 +6,35 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tunnel": "~/bin/ngrok http 3000",
+    "setup:webhook": "npx tsx scripts/setup-webhook.ts"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "agentmail": "^0.3.7",
+    "dotenv": "^17.3.1",
+    "framer-motion": "^12.34.3",
+    "intuit-oauth": "^4.2.2",
+    "lucide-react": "^0.575.0",
+    "mongodb": "^7.1.0",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-window": "^2.2.7",
+    "recharts": "^3.7.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-window": "^1.8.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
