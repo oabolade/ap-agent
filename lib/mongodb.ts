@@ -75,7 +75,7 @@ function isUsingMocks(): boolean {
 }
 
 // ─── Mock State (fallback) ────────────────────────────────────────
-let mockInvoices = [...MOCK_INVOICES];
+const mockInvoices = [...MOCK_INVOICES];
 let mockSettings = { ...MOCK_SETTINGS };
 
 // ─── Ensure Indexes (run once on first connection) ────────────────
@@ -256,3 +256,53 @@ export async function checkConnection(): Promise<{ connected: boolean; mode: str
         return { connected: false, mode: 'error' };
     }
 }
+
+// ─── Vendors Collection ───────────────────────────────────────────
+
+export interface VendorDoc {
+    vendor_id: string;
+    vendor_name: string;
+    vendor_type: 'PLATFORM' | 'SAAS' | 'UTILITY';
+    portal_url: string;
+    logo_url: string;
+    navigation_hint: string;
+    active: boolean;
+    created_at: Date;
+}
+
+async function vendorsCol(): Promise<Collection<VendorDoc> | null> {
+    const db = await getDb();
+    return db ? (db.collection('vendors') as unknown as Collection<VendorDoc>) : null;
+}
+
+/**
+ * Look up a vendor by vendor_id (e.g. 'amazon-business').
+ */
+export async function getVendor(vendorId: string): Promise<VendorDoc | null> {
+    const col = await vendorsCol();
+    if (!col) return null;
+    return col.findOne({ vendor_id: vendorId, active: true }) as unknown as VendorDoc | null;
+}
+
+/**
+ * Look up a vendor by matching vendor_name (case-insensitive contains).
+ * Used during pipeline to resolve which portal to scrape given a vendor name from the email.
+ */
+export async function findVendorByName(vendorName: string): Promise<VendorDoc | null> {
+    const col = await vendorsCol();
+    if (!col) return null;
+    return col.findOne({
+        vendor_name: { $regex: new RegExp(vendorName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+        active: true,
+    }) as unknown as VendorDoc | null;
+}
+
+/**
+ * Get all active vendors.
+ */
+export async function getAllVendors(): Promise<VendorDoc[]> {
+    const col = await vendorsCol();
+    if (!col) return [];
+    return col.find({ active: true }).toArray() as unknown as VendorDoc[];
+}
+

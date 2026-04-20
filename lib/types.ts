@@ -3,13 +3,16 @@
 // ─── Pipeline Status ──────────────────────────────────────────────
 export type PipelineStatus =
   | 'RECEIVED'
+  | 'EXTRACTING'
   | 'PARSING'
+  | 'RECONCILING'
   | 'MATCHING'
   | 'APPROVED'
+  | 'PENDING_REVIEW'
   | 'EXCEPTION'
   | 'DISPUTED';
 
-export type MatchResult = 'MATCH' | 'MISMATCH' | 'NO_PO' | null;
+export type MatchResult = 'MATCH' | 'MISMATCH' | 'DISCREPANCY' | 'NO_PO' | null;
 
 // ─── Agent Log Entry ──────────────────────────────────────────────
 export interface AgentLogEntry {
@@ -49,6 +52,11 @@ export interface Invoice {
   portal_verified?: boolean;
   portal_invoice_number?: string;
   portal_amount?: number;
+  // Phase 2: dual-source reconciliation fields
+  fireworks_data?: Record<string, unknown>;
+  tinyfish_data?: Record<string, unknown>;
+  reconciliation?: Record<string, unknown>;
+  vendor_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -88,7 +96,10 @@ export interface KPIData {
   invoicesTodayDelta: number;
   totalProcessedMonth: number;
   pendingApprovals: number;
+  pendingReviews: number;
   exceptionsFlagged: number;
+  timeSavedMinutes: number;
+  averageConfidence: number;
 }
 
 // ─── Parsed Invoice (from Fireworks) ──────────────────────────────

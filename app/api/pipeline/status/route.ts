@@ -1,4 +1,4 @@
-// ─── AutoAP — Pipeline Status API (Live) ──────────────────────────
+// ─── AutoAP — Pipeline Status API (Phase 2) ──────────────────────
 // Returns the pipeline status for the most recently active invoice.
 
 import { NextResponse } from 'next/server';
@@ -6,23 +6,50 @@ import { getInvoices } from '@/lib/mongodb';
 import { PipelineStep, Invoice } from '@/lib/types';
 
 // Map agent_log actions → pipeline step IDs
+// Phase 2: includes both old (Phase 1) and new action names
 const STEP_MAP: { actions: string[]; id: string; label: string }[] = [
     { actions: ['EMAIL_DETECTED'], id: 'receive', label: 'Invoice Received' },
-    { actions: ['PARSE_START', 'PARSE_COMPLETE'], id: 'parse', label: 'AI Parsing' },
-    { actions: ['VENDOR_PORTAL_START', 'TINYFISH_PORTAL', 'TINYFISH_PORTAL_VERIFIED', 'VENDOR_PORTAL_DONE'], id: 'portal', label: 'Vendor Portal Verify' },
+    {
+        actions: [
+            'PARSE_START', 'PARSE_COMPLETE',                     // Phase 1
+            'EXTRACTION_START', 'FIREWORKS_START', 'FIREWORKS_COMPLETE', // Phase 2
+            'PO_HINT',
+        ],
+        id: 'extract', label: 'AI Extraction'
+    },
+    {
+        actions: [
+            'VENDOR_PORTAL_START', 'VENDOR_PORTAL_DONE',         // Phase 1
+            'PORTAL_SCRAPE_START', 'TINYFISH_PORTAL',            // Phase 2
+            'TINYFISH_PORTAL_VERIFIED',
+        ],
+        id: 'portal', label: 'Portal Verification'
+    },
+    {
+        actions: [
+            'RECONCILIATION_START', 'RECONCILIATION_COMPLETE',
+            'RECONCILIATION_SKIP', 'RECONCILIATION_REJECT',
+            'DISCREPANCY_FOUND',
+        ],
+        id: 'reconcile', label: 'Reconciliation'
+    },
     { actions: ['QB_SEARCH', 'PO_MATCH_RESULT'], id: 'match', label: 'PO Match' },
     { actions: ['AUTO_APPROVE', 'BILL_CREATED', 'TINYFISH_BILL_CREATE'], id: 'approve', label: 'Bill Creation' },
     { actions: ['PIPELINE_COMPLETE'], id: 'complete', label: 'Complete' },
 ];
 
+// Steps that should be hidden if never attempted
+const OPTIONAL_STEPS = new Set(['portal', 'reconcile']);
+
 function buildSteps(invoice: Invoice | null): PipelineStep[] {
     if (!invoice) {
-        // No invoices — show all steps as pending  
-        return STEP_MAP.map(s => ({
-            id: s.id,
-            label: s.label,
-            status: 'pending' as const,
-        }));
+        return STEP_MAP
+            .filter(s => !OPTIONAL_STEPS.has(s.id))
+            .map(s => ({
+                id: s.id,
+                label: s.label,
+                status: 'pending' as const,
+            }));
     }
 
     const logActions = new Set(invoice.agent_log.map(e => e.action));
@@ -38,22 +65,26 @@ function buildSteps(invoice: Invoice | null): PipelineStep[] {
         }
     }
 
+    // Terminal states: pipeline has stopped, don't show any step as "active"
+    const TERMINAL_STATES = new Set(['APPROVED', 'EXCEPTION', 'DISPUTED', 'PENDING_REVIEW']);
+    const isTerminal = TERMINAL_STATES.has(invoice.status);
+
     // Find first incomplete step
     let activeFound = false;
 
     return STEP_MAP.map(step => {
-        // Skip portal step if no portal data in log
-        if (step.id === 'portal' && !logActions.has('VENDOR_PORTAL_START') && !logActions.has('TINYFISH_PORTAL')) {
-            // Only show portal step if it was attempted
-            if (!completedSteps.has('portal')) {
-                return null; // Skip entirely
+        // Hide optional steps if never attempted
+        if (OPTIONAL_STEPS.has(step.id) && !completedSteps.has(step.id)) {
+            const stepIdx = STEP_MAP.findIndex(s => s.id === step.id);
+            const laterCompleted = STEP_MAP.slice(stepIdx + 1).some(s => completedSteps.has(s.id));
+            if (laterCompleted || !step.actions.some(a => logActions.has(a))) {
+                return null;
             }
         }
 
         const isCompleted = completedSteps.has(step.id);
 
         if (isCompleted) {
-            // Find the latest timestamp for this step
             const timestamps = step.actions
                 .filter(a => logByAction.has(a))
                 .map(a => logByAction.get(a)!.timestamp);
@@ -67,7 +98,8 @@ function buildSteps(invoice: Invoice | null): PipelineStep[] {
             };
         }
 
-        if (!activeFound) {
+        // Only show "active" spinner if pipeline is still running
+        if (!activeFound && !isTerminal) {
             activeFound = true;
             return {
                 id: step.id,
@@ -87,15 +119,13 @@ function buildSteps(invoice: Invoice | null): PipelineStep[] {
 
 export async function GET() {
     try {
-        // Get the most recent invoice that is actively processing, or the last completed one
         const invoices = await getInvoices({ limit: 5 });
 
-        // Prefer an actively processing invoice
+        // Prefer an actively processing invoice (Phase 2 statuses included)
         const active = invoices.find(inv =>
-            ['RECEIVED', 'PARSING', 'MATCHING'].includes(inv.status)
+            ['RECEIVED', 'PARSING', 'EXTRACTING', 'RECONCILING', 'MATCHING'].includes(inv.status)
         );
 
-        // Otherwise use the most recent one
         const target = active || invoices[0] || null;
 
         const steps = buildSteps(target);
@@ -122,3 +152,4 @@ export async function GET() {
         );
     }
 }
+

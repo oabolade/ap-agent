@@ -98,7 +98,8 @@ async function getRecentLogs(): Promise<AgentLogEntry[]> {
             allEntries.push({
                 ...entry,
                 // Add invoice context to the detail if not already present
-                detail: entry.detail.includes(inv.vendor_name || '')
+                // Do not prepend to special system actions that carry raw data (like URLs)
+                detail: (entry.action === 'STREAMING_START' || entry.action === 'STREAMING_END' || entry.detail.includes(inv.vendor_name || ''))
                     ? entry.detail
                     : `[${inv.vendor_name || inv.invoice_number || 'Unknown'}] ${entry.detail}`,
             });

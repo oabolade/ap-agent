@@ -350,6 +350,9 @@ export function getMockKPIs(invoices: Invoice[]): KPIData {
         totalProcessedMonth: totalProcessedMonth || 29445.50,
         pendingApprovals: pendingApprovals || 2,
         exceptionsFlagged: exceptionsFlagged || 3,
+        pendingReviews: 1,
+        timeSavedMinutes: 125,
+        averageConfidence: 94,
     };
 }
 

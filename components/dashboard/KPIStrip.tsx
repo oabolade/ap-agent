@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, DollarSign, Clock, AlertTriangle } from 'lucide-react';
+import { FileText, DollarSign, Clock, AlertTriangle, Zap } from 'lucide-react';
 import { KPIData } from '@/lib/types';
 
 function AnimatedNumber({ value, prefix = '', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
@@ -39,13 +39,14 @@ interface KPICardProps {
     title: string;
     value: number;
     prefix?: string;
+    suffix?: string;
     delta?: number;
     icon: React.ReactNode;
     accentColor: string;
     glowShadow: string;
 }
 
-function KPICard({ title, value, prefix, delta, icon, accentColor, glowShadow }: KPICardProps) {
+function KPICard({ title, value, prefix, suffix, delta, icon, accentColor, glowShadow }: KPICardProps) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -90,7 +91,7 @@ function KPICard({ title, value, prefix, delta, icon, accentColor, glowShadow }:
             </div>
 
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                <AnimatedNumber value={value} prefix={prefix || ''} />
+                <AnimatedNumber value={value} prefix={prefix || ''} suffix={suffix || ''} />
             </div>
 
             {delta !== undefined && (
@@ -106,7 +107,7 @@ export default function KPIStrip({ data }: { data: KPIData }) {
     return (
         <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(5, 1fr)',
             gap: '16px',
             marginBottom: '20px',
         }}>
@@ -119,7 +120,7 @@ export default function KPIStrip({ data }: { data: KPIData }) {
                 glowShadow="var(--shadow-glow-cyan)"
             />
             <KPICard
-                title="Total Processed (Month)"
+                title="Processed (Month)"
                 value={data.totalProcessedMonth}
                 prefix="$"
                 icon={<DollarSign size={18} />}
@@ -128,7 +129,7 @@ export default function KPIStrip({ data }: { data: KPIData }) {
             />
             <KPICard
                 title="Pending Approvals"
-                value={data.pendingApprovals}
+                value={data.pendingApprovals + (data.pendingReviews || 0)}
                 icon={<Clock size={18} />}
                 accentColor="var(--accent-warning)"
                 glowShadow="var(--shadow-glow-warning)"
@@ -139,6 +140,14 @@ export default function KPIStrip({ data }: { data: KPIData }) {
                 icon={<AlertTriangle size={18} />}
                 accentColor={data.exceptionsFlagged > 0 ? 'var(--accent-error)' : 'var(--accent-success)'}
                 glowShadow={data.exceptionsFlagged > 0 ? 'var(--shadow-glow-error)' : 'var(--shadow-glow-success)'}
+            />
+            <KPICard
+                title="Time Saved"
+                value={data.timeSavedMinutes || 0}
+                suffix=" min"
+                icon={<Zap size={18} />}
+                accentColor="#a78bfa"
+                glowShadow="0 0 20px rgba(167, 139, 250, 0.15)"
             />
         </div>
     );

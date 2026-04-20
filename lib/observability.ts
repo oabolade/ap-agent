@@ -109,15 +109,39 @@ export async function logToAgentOps(event: LogEvent): Promise<void> {
     }
 }
 
-// ─── Axiom Integration ────────────────────────────────────────────
+// ─── Axiom Structured Event Logging ───────────────────────────────
+// Phase 2: All pipeline events use a consistent schema.
+// Required events:
+//   invoice.received, extraction.started, fireworks.completed,
+//   portal.scraped, reconciliation.completed, qb.bill_created,
+//   qb.payment_scheduled, exception.flagged, pipeline.completed
 
-export async function logToAxiom(event: LogEvent): Promise<void> {
+export interface AxiomEvent {
+    event: string;
+    invoiceId: string;
+    timestamp: string;
+    success: boolean;
+    duration_ms?: number;
+    vendor_id?: string;
+    confidence_score?: number;
+    recommendation?: string;
+    flag_type?: string;
+    severity?: string;
+    qb_bill_id?: string;
+    amount?: number;
+    payment_date?: string;
+    total_duration_ms?: number;
+    error?: string;
+    [key: string]: unknown;
+}
+
+export async function emitAxiomEvent(axiomEvent: AxiomEvent): Promise<void> {
     const token = process.env.AXIOM_API_TOKEN;
-    const dataset = process.env.AXIOM_DATASET || 'autoap-logs';
+    const dataset = process.env.AXIOM_DATASET || 'autoap-prod';
 
     if (!token) {
-        const prefix = event.level === 'error' ? '❌' : event.level === 'warning' ? '⚠️' : '→';
-        console.log(`[Axiom] ${prefix} [${event.action}] ${event.detail}`);
+        const icon = axiomEvent.success ? '✓' : '✗';
+        console.log(`[Axiom] ${icon} ${axiomEvent.event} | invoice=${axiomEvent.invoiceId} ${axiomEvent.duration_ms ? `(${axiomEvent.duration_ms}ms)` : ''}`);
         return;
     }
 
@@ -128,19 +152,25 @@ export async function logToAxiom(event: LogEvent): Promise<void> {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify([
-                {
-                    _time: new Date().toISOString(),
-                    level: event.level || 'info',
-                    action: event.action,
-                    invoice_id: event.invoiceId,
-                    detail: event.detail,
-                },
-            ]),
+            body: JSON.stringify([{
+                _time: axiomEvent.timestamp,
+                ...axiomEvent,
+            }]),
         });
     } catch (error) {
-        console.error('[Axiom] Failed to log:', error);
+        console.error(`[Axiom] Failed to emit ${axiomEvent.event}:`, error);
     }
+}
+
+// Legacy adapter — keep existing logToAxiom calls working
+export async function logToAxiom(event: LogEvent): Promise<void> {
+    await emitAxiomEvent({
+        event: `pipeline.${event.action.toLowerCase()}`,
+        invoiceId: event.invoiceId,
+        timestamp: new Date().toISOString(),
+        success: event.level !== 'error',
+        error: event.level === 'error' ? event.detail : undefined,
+    });
 }
 
 // ─── Convenience: log to all services at once ─────────────────────
@@ -151,3 +181,4 @@ export async function logObservability(event: LogEvent): Promise<void> {
         logToAxiom(event),
     ]);
 }
+

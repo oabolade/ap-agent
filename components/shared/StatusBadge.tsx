@@ -4,15 +4,21 @@ import { PipelineStatus } from '@/lib/types';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     RECEIVED: { label: 'RECEIVED', color: 'var(--accent-cyan)', bg: 'var(--accent-cyan-dim)' },
+    EXTRACTING: { label: 'EXTRACTING', color: 'var(--accent-cyan)', bg: 'var(--accent-cyan-dim)' },
     PARSING: { label: 'PARSING', color: 'var(--accent-cyan)', bg: 'var(--accent-cyan-dim)' },
+    RECONCILING: { label: 'RECONCILING', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
     MATCHING: { label: 'MATCHING', color: 'var(--accent-warning)', bg: 'var(--accent-warning-dim)' },
     APPROVED: { label: 'AUTO-APPROVED', color: 'var(--accent-success)', bg: 'var(--accent-success-dim)' },
+    PENDING_REVIEW: { label: 'PENDING REVIEW', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
     EXCEPTION: { label: 'EXCEPTION', color: 'var(--accent-error)', bg: 'var(--accent-error-dim)' },
     DISPUTED: { label: 'DISPUTED', color: 'var(--accent-error)', bg: 'var(--accent-error-dim)' },
 };
 
+const ACTIVE_STATES = new Set(['EXTRACTING', 'PARSING', 'RECONCILING', 'MATCHING']);
+
 export default function StatusBadge({ status }: { status: PipelineStatus }) {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.RECEIVED;
+    const isActive = ACTIVE_STATES.has(status);
 
     return (
         <span
@@ -33,7 +39,7 @@ export default function StatusBadge({ status }: { status: PipelineStatus }) {
                 whiteSpace: 'nowrap',
             }}
         >
-            {(status === 'PARSING' || status === 'MATCHING') && (
+            {isActive && (
                 <span
                     style={{
                         width: 6,
@@ -48,3 +54,4 @@ export default function StatusBadge({ status }: { status: PipelineStatus }) {
         </span>
     );
 }
+

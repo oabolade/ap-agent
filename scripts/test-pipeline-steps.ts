@@ -9,8 +9,6 @@ import 'dotenv/config';
 const REAL_EMAIL = `Please find attached our invoice #TEST-E2E-002 for office supplies. Amount
 due: $1,240.00. PO: PO-4521. Due date: March 30, 2026.`;
 
-const INVOICE_ID = 'inv-1773121583335'; // Latest real webhook invoice
-
 // ─── Step 1: Test Fireworks.ai Parsing ────────────────────────────
 async function testParsing() {
     console.log('\n🔍 STEP 2: Fireworks.ai Invoice Parsing');

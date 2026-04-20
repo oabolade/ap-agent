@@ -28,7 +28,11 @@ function getLevel(entry: AgentLogEntry): string {
     return 'info';
 }
 
-export default function AgentActivityLog() {
+export default function AgentActivityLog({
+    onStreamUrlChange
+}: {
+    onStreamUrlChange?: (url: string | null) => void;
+}) {
     const [logs, setLogs] = useState<AgentLogEntry[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -46,6 +50,17 @@ export default function AgentActivityLog() {
             eventSource.onmessage = (event) => {
                 try {
                     const entry = JSON.parse(event.data) as AgentLogEntry;
+                    
+                    // Handle streaming triggers without rendering them as text logs
+                    if (entry.action === 'STREAMING_START') {
+                        onStreamUrlChange?.(entry.detail);
+                        return; // Prevent adding to logs
+                    }
+                    if (entry.action === 'STREAMING_END') {
+                        onStreamUrlChange?.(null);
+                        return; // Prevent adding to logs
+                    }
+
                     setLogs(prev => {
                         // Deduplicate by timestamp + action
                         const key = `${entry.timestamp}-${entry.action}`;
@@ -75,6 +90,7 @@ export default function AgentActivityLog() {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [logs]);
 
     return (
