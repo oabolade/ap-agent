@@ -13,6 +13,9 @@ const NAV_ITEMS = [
 export default function NavHeader() {
     const pathname = usePathname();
 
+    // Hide on landing page — it has its own nav
+    if (pathname === '/') return null;
+
     return (
         <header
             style={{
