@@ -16,7 +16,8 @@ export async function parseInvoice(rawText: string): Promise<ParsedInvoice> {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            model: 'accounts/fireworks/models/llama-v3p3-70b-instruct',
+            model: 'accounts/fireworks/models/kimi-k2p6',
+            response_format: { type: 'json_object' },
             messages: [
                 {
                     role: 'system',
